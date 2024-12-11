@@ -1,0 +1,6 @@
+figures/*
+output_files/*
+cputime.db
+errors.log
+memory.db
+messages.log
