@@ -4,6 +4,7 @@
 
 
 FILES_PATH="$1"
+BATCHES=$2
 
 # Check that FILES_PATH is a valid file
 if [ ! -f "$FILES_PATH" ]; then
@@ -14,6 +15,6 @@ fi
 # Cycle through the files in the list and split them into smaller lists of 25 files each
 
 # Split the file into smaller lists of 25 files each
-split -l 25 "$FILES_PATH" "${FILES_PATH}_part_"
+split -l $BATCHES "$FILES_PATH" "${FILES_PATH}_part_"
 
 echo "File has been split into smaller lists of 25 files each."
