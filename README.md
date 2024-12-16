@@ -12,6 +12,41 @@ Once a run is processed, the required data is saved as a .pkl file, meaning mult
 
 ## Getting a version of larsoft working!
 
+
+### Getting products with MRB:
+
+mrb newDev -v v09_93_01_01 -q e26:prof \
+source local_producs \
+mrb g sbndcode \
+mrb g sbncode \
+mrb g sbnobj 
+
+Then the following need to be modified
+\
+#### sbnobj: 
+        
+    git checkout origin/feature/hlay_crt_offline
+
+#### sbncode:
+    git checkout origin/feature/hlay_crt_offline
+    emacs ups/product_deps:
+        line 259: sbndaq v1_10_03
+    cd sbncode/Supera
+    git checkout tags/icarus_v09_83_01
+
+#### sbndcode:
+    
+    git checkout origin/feature/hlay_gdml_v02_03
+
+    OR USE COMMIT 21/11/24
+    git checkout 70ff2f2edf6ecee1065da709a59b595807c5f2f8
+
+
+
+
+#### OLD
+
+
 From a clean SL7 instance, working with sbncode v09_93_01
 
 ### Getting products with MRB:
