@@ -6,8 +6,11 @@ The notebook requires an installation of LArSoft and Henry Lay's branches featur
 
 However, to use the latest daq version (v1_10_03) additional modifications need to be made. The steps are detailed below.
 
-Firstly proces_files.sh should be edited to set file paths, daq version, run number and fcl stage to create the correctly decoded root files needed for the analysis. Then, timing_figures.ipynb can be used to process each run. For large runs, this is done in batches to reduced memory overhead. 
-Once a run is processed, the required data is saved as a .pkl file, meaning multiple runs can be combined together without unneccessary reprocessing.
+To decode daq files and get the CRT reco data into a root file, you can run the fcls on the gpvm, using process_files.sh or process_files_list.sh, or on the grid using project.py and modifying an xml files located in /xmls/. To get specific daq files to use, tools/get_run_files.sh can be modified/used to to generate a file list for a run and file name criteria (such as ...strmBNBZeroBias... files only). The destination can be specified using process_files.sh, and for grid jobs checkana_copy.sh can be used to generate a file list and move the ana files to a specified location.
+
+Once the ana files are generated, you can use timing_figures.ipynb to process each file in a python notebook, or use timing_pkl_maker.py to process the .root files as a script and save them as .pkl files. This means that data does not need to be repeatedly analysed, and we can combine a large number of runs into a singular figure.
+
+timing_plotting.ipynb can be used to read these pkl files, combining them into singular, large dataset figures.
 
 
 ## Getting a version of larsoft working!
