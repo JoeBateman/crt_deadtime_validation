@@ -9,10 +9,21 @@ import plotly.graph_objects as go
 import os
 import glob
 import pickle as pkl
+import sys
+
 print("Libraries imported!")
-path = "/exp/sbnd/data/users/jbateman/workdir/crt/run/"
-run="017985"
+if len(sys.argv) != 2:
+    print("Usage: python timing_pkl_maker.py <run>")
+    sys.exit(1)
+
+run = sys.argv[1]
 file_format = "crt_ana_*"
+print("Looking at run ", run)
+
+# Use either the persistent or data path. Currently using the persistent path because data is full
+# path = "/exp/sbnd/data/users/jbateman/workdir/crt/run/"
+path = "/pnfs/sbnd/persistent/users/jbateman/crt/run/"
+
 
 features = ['run', 'subrun', 'event', 'feb_mac5', 'feb_tagger', 'feb_flags',
        'feb_ts0', 'feb_ts1', 'feb_unixs', 'feb_adc', 'feb_coinc', 'cl_ts0',
@@ -42,9 +53,8 @@ def save_flags_as_pkl(trig_time, flag_11, flag_3, path, filename):
         pkl.dump(data, f)
 
 # Define a function to apply the boolean mask
-def apply_mask(row):
-    mask = row['cl_has_sp']
-    return row.apply(lambda x: x[mask] if isinstance(x, ak.Array) else x)
+def apply_mask(data, mask):
+    return data[mask]
 
 def calculate_rel_ts0(ts0, rwm, etrig):
     delta_t = etrig - rwm
@@ -83,17 +93,38 @@ for batch_number in range(total_batches):
     # Load the first file to get the columns
     ttree = uproot.open(subset_files[0])
     print("Loading ", subset_files[0], "...")
-    recodata = ttree['crtana/tree'].arrays(features, library='pd')
+    recodata = ttree['crtana/tree'].arrays(features, library='ak')
     # Merge all the files into one dataframe
     for file in subset_files[1:]:
         print("Loading ", file, "...")
         ttree = uproot.open(file)
-        temp_recodata = ttree['crtana/tree'].arrays(features, library='pd')
-        recodata = pd.concat([recodata, temp_recodata])
+        temp_recodata = ttree['crtana/tree'].arrays(features, library='ak')
+        recodata = ak.concatenate([recodata, temp_recodata])
         ttree.close()
+    print("Data loaded!")
+    
+    got_indices = False 
 
-    etrig_index = np.where(recodata['tdc_name'][:1][0] == b'etrig')[0][0]
-    rwm_index = np.where(recodata['tdc_name'][:1][0] == b'rwm')[0][0]
+    # Get the indices for the TDC names
+    i = 0
+    for names in recodata.tdc_name:
+        if i >= len(recodata.tdc_name):
+            print('Counldnt get names')
+            break
+        if len(names) == 5:
+            etrig_index = np.where(names == b'etrig')[0][0]
+            crtt1_index = np.where(names == b'crtt1')[0][0]
+            rwm_index = np.where(names == b'rwm')[0][0]
+            got_indices = True
+            break        
+    
+    if not got_indices:
+        print("TDC names not found, skipping files {subset_files} ...")
+        continue
+   
+    print("crtt1 index = ", crtt1_index)
+    print("etrig index = ", etrig_index)
+    print("rwm index = ", rwm_index)
 
     ts0_arr = []
     ts1_arr = []
@@ -104,11 +135,11 @@ for batch_number in range(total_batches):
     ts0_arr = recodata['feb_ts0']
     ts1 = recodata['feb_ts1']
 
-    flags = recodata['feb_flags'].values
-    tdc_time = recodata['tdc_timestamp'].values
-
+    flags = recodata.feb_flags
+    tdc_time = recodata.tdc_timestamp
+    print("Getting flags...")
     for tdc, flag, ts0 in zip(tdc_time, flags, ts0_arr):
-        if len(tdc) > 0:
+        if len(tdc) == 5:
             
             # tdc_names: ['crtt1' 'bes' 'etrig' 'ftrig' 'rwm']
             tdc_offset = str(tdc[etrig_index]) # Get the TDC etrig
@@ -123,15 +154,16 @@ for batch_number in range(total_batches):
 
     # Saving this as a pkl to merge with the other data!
     path = "/exp/sbnd/data/users/jbateman/workdir/crt/run/"+run+"/"
+    print("Saving flags to ", path)
     filename = f"flag_t0_etrig_{batch_number}.pkl"
     save_flags_as_pkl(trig_time, flag_11, flag_3, path, filename)
 
     sp_features = ['cl_has_sp', 'cl_tagger', 'cl_sp_ts0', 'cl_sp_x', 'cl_sp_y', 'cl_sp_z'] # defining a reduced set of features to speed up processing
 
     # Apply the mask to each row
-    print("filtering dataframe")
-    filtered_df = recodata[sp_features].apply(apply_mask, axis=1)
-    print("tagger")
+    print("Filtering dataframe for spacepoints...")
+    mask = recodata['cl_has_sp']
+    filtered_df = {feature: apply_mask(recodata[feature], mask) for feature in sp_features}
 
     relative_ts0 = []
     wall_tag = []
@@ -143,16 +175,17 @@ for batch_number in range(total_batches):
 
     tagger_no_sp = filtered_df['cl_tagger']
     # wall_tag.extend(list(ak.flatten(filtered_df['cl_tagger'])))
-    print("sp coords")
-    sp_x = filtered_df['cl_sp_x'].values
-    sp_y = filtered_df['cl_sp_y'].values
-    sp_z = filtered_df['cl_sp_z'].values
-    print("tsX")
-    sp_ts0 = filtered_df['cl_sp_ts0'].values
+    
+    sp_x = filtered_df['cl_sp_x']
+    sp_y = filtered_df['cl_sp_y']
+    sp_z = filtered_df['cl_sp_z']
+
+    sp_ts0 = filtered_df['cl_sp_ts0']
     # sp_ts1 = filtered_df['cl_sp_ts1'].values
-    print("tdc")
-    tdc_time = recodata['tdc_timestamp'].values
+    print("Finished filtering!")
+    tdc_time = recodata['tdc_timestamp']
     skip_counter = 0
+    print("Calculating relative ts0...")
     for tdc, tagger, ts0 , x, y, z in zip(tdc_time, tagger_no_sp, sp_ts0, sp_x, sp_y, sp_z):
         if len(tdc) == 5:
             # ['crtt1' 'bes' 'etrig' 'ftrig' 'rwm']
@@ -170,8 +203,9 @@ for batch_number in range(total_batches):
         else:
             print("skipping event due to missing tdc data")
             skip_counter +=1
+    print("Number of spacepoints: ", len(relative_ts0))
     print(f"Skipped {skip_counter} events due to no TDC data")
-
+    
     filter_spx = np.array(filter_spx)
     filter_spy = np.array(filter_spy)
     filter_spz = np.array(filter_spz)
@@ -181,5 +215,6 @@ for batch_number in range(total_batches):
 
     # Saving this to a pkl to combine with other runs
     path = "/exp/sbnd/data/users/jbateman/workdir/crt/run/"+run+"/"
+    print("Saving spacepoints to ", path)
     filename = f"sp_timing_{batch_number}.pkl"
     save_sp_as_pkl(relative_ts0, wall_tag, filter_spx, filter_spy, filter_spz, path, filename)
