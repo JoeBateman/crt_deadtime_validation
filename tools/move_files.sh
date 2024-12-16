@@ -1,10 +1,14 @@
 #!/bin/bash
 
 RUN_NUMBER=$1
-SBNDCODE_VERSION="v09_91_02_0201"
+SBNDCODE_VERSION="v09_93_01"
 
 FILE_LIST_PATH="/pnfs/sbnd/scratch/users/jbateman/$SBNDCODE_VERSION/$RUN_NUMBER/crt_decode/filesana.list"
-TARGET_DIR="/exp/sbnd/data/users/jbateman/workdir/crt/run/$RUN_NUMBER"
+
+# TARGET_DIR="§$RUN_NUMBER"
+TARGET_DIR="/pnfs/sbnd/persistent/users/jbateman/crt/run/$RUN_NUMBER"
+
+echo "Movig files to $TARGET_DIR"
 
 declare -A alphabet_map
 for i in {0..25}; do
