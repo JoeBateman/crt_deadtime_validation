@@ -102,56 +102,45 @@ for batch_number in range(total_batches):
         recodata = ak.concatenate([recodata, temp_recodata])
         ttree.close()
     print("Data loaded!")
-    
-    got_indices = False 
-
-    # Get the indices for the TDC names
-    i = 0
-    for names in recodata.tdc_name:
-        if i >= len(recodata.tdc_name):
-            print('Counldnt get names')
-            break
-        if len(names) == 5:
-            etrig_index = np.where(names == b'etrig')[0][0]
-            crtt1_index = np.where(names == b'crtt1')[0][0]
-            rwm_index = np.where(names == b'rwm')[0][0]
-            got_indices = True
-            break        
-    
-    if not got_indices:
-        print("TDC names not found, skipping files {subset_files} ...")
-        continue
-   
-    print("crtt1 index = ", crtt1_index)
-    print("etrig index = ", etrig_index)
-    print("rwm index = ", rwm_index)
-
-    ts0_arr = []
-    ts1_arr = []
-    flag_arr = []
-    tdc_etrig = []
-    trig_time = []
 
     ts0_arr = recodata['feb_ts0']
-    ts1 = recodata['feb_ts1']
+    ts1_arr = recodata['feb_ts1']
 
     flags = recodata.feb_flags
     tdc_time = recodata.tdc_timestamp
-    print("Getting flags...")
-    for tdc, flag, ts0 in zip(tdc_time, flags, ts0_arr):
-        if len(tdc) == 5:
-            
-            # tdc_names: ['crtt1' 'bes' 'etrig' 'ftrig' 'rwm']
-            tdc_offset = str(tdc[etrig_index]) # Get the TDC etrig
-            tdc_offset = np.int64(tdc_offset[-9:]) # Get the last 9 digits for timing until t0 reset
-            trig_time.extend(ts0 - tdc_offset)
-            flag_arr.extend(flag)
+    tdc_names = recodata.tdc_name
 
-    trig_time = np.array(trig_time)/1e6 # convert from ns to ms
+    # Find the indices of 'etrig' in tdc_names
+    etrig_indices = ak.argmax(tdc_names == b'etrig', axis=1)
 
+    # Initialize an empty list to store the TDC etrig values
+    tdc_etrig = []
+
+    # Loop through each subarray in tdc_time and etrig_indices
+    for tdc_subarray, etrig_index in zip(tdc_time, etrig_indices):
+        if etrig_index is not None:
+            tdc_etrig.append(tdc_subarray[etrig_index])
+        else:
+            tdc_etrig.append(np.nan)  # Handle cases where etrig_index is None
+
+    # Convert the list to a numpy array
+    tdc_etrig = np.array(tdc_etrig)
+
+    # Get the last 9 digits for timing until t0 reset
+    tdc_offset = tdc_etrig % 1e9
+
+    # Calculate trig_time
+    trig_time = (ts0_arr - tdc_offset[:, None]) / 1e6  # convert from ns to ms
+
+    # Flatten the arrays and filter by flag
+    trig_time = ak.flatten(trig_time)
+    flag_arr = ak.flatten(flags)
+
+    trig_time = np.array(trig_time)
+    flag_arr = np.array(flag_arr)
     flag_11 = flag_map(flag_arr, 11)
     flag_3 = flag_map(flag_arr, 3)
-
+    print("Finished creating flag arrays!")
     # Saving this as a pkl to merge with the other data!
     path = "/exp/sbnd/data/users/jbateman/workdir/crt/run/"+run+"/"
     print("Saving flags to ", path)
@@ -166,7 +155,7 @@ for batch_number in range(total_batches):
     filtered_df = {feature: apply_mask(recodata[feature], mask) for feature in sp_features}
 
     relative_ts0 = []
-    wall_tag = []
+    relative_ts1 = []
 
     filter_spx = []
     filter_spy = []
@@ -174,37 +163,78 @@ for batch_number in range(total_batches):
     filter_wall_tag = []
 
     tagger_no_sp = filtered_df['cl_tagger']
-    # wall_tag.extend(list(ak.flatten(filtered_df['cl_tagger'])))
-    
     sp_x = filtered_df['cl_sp_x']
     sp_y = filtered_df['cl_sp_y']
     sp_z = filtered_df['cl_sp_z']
-
     sp_ts0 = filtered_df['cl_sp_ts0']
-    # sp_ts1 = filtered_df['cl_sp_ts1'].values
-    print("Finished filtering!")
+    sp_ts1 = filtered_df['cl_sp_ts1']
     tdc_time = recodata['tdc_timestamp']
-    skip_counter = 0
-    print("Calculating relative ts0...")
-    for tdc, tagger, ts0 , x, y, z in zip(tdc_time, tagger_no_sp, sp_ts0, sp_x, sp_y, sp_z):
-        if len(tdc) == 5:
-            # ['crtt1' 'bes' 'etrig' 'ftrig' 'rwm']
-            tdc_rwm = np.int64(str(tdc[rwm_index])[-12:])       # Get the last 12 digits for timing until RWM, 
-            tdc_etrig = np.int64(str(tdc[etrig_index])[-12:])     # otherwise leads to scalar subtract overflow
+    tdc_names = recodata['tdc_name']
 
-            delta_t = tdc_etrig - tdc_rwm
-            relative_ts0.extend(ts0 + delta_t)
-            filter_spx.extend(x)
-            filter_spy.extend(y)
-            filter_spz.extend(z)
-            filter_wall_tag.extend(tagger)
-            
-            
-        else:
-            print("skipping event due to missing tdc data")
-            skip_counter +=1
+    # Find the indices of 'crtt1', 'rwm', and 'etrig' in tdc_names
+    crtt1_indices = ak.argmax(tdc_names == b'crtt1', axis=1)
+    rwm_indices = ak.argmax(tdc_names == b'rwm', axis=1)
+    etrig_indices = ak.argmax(tdc_names == b'etrig', axis=1)
+
+    # # Filter out events with missing TDC data
+    valid_events = (crtt1_indices != -1) & (rwm_indices != -1) & (etrig_indices != -1)
+    # Apply the mask to filter valid events
+    tdc_names = tdc_names[valid_events]
+    tdc_time = tdc_time[valid_events]
+
+    # Extract the TDC values
+    tdc_crt = tdc_time[tdc_names == b'crtt1']
+    tdc_rwm = tdc_time[tdc_names == b'rwm']
+    tdc_etrig = tdc_time[tdc_names == b'etrig']
+
+    # Check that none of the entries in each array have length zero
+    filter = []
+    for crt, rwm, etrig in zip(tdc_crt, tdc_rwm, tdc_etrig):
+        try:
+            if len(crt) == 0 or len(rwm) == 0 or len(etrig) == 0:
+                filter.extend([False])
+            else:
+                filter.extend([True])
+        except:
+            filter.extend([False])
+
+    sp_ts0 = sp_ts0[filter]
+    sp_ts1 = sp_ts1[filter]
+    sp_x = sp_x[filter]
+    sp_y = sp_y[filter]
+    sp_z = sp_z[filter]
+    tagger_no_sp = tagger_no_sp[filter]
+
+    tdc_etrig_flat = ak.flatten(tdc_etrig[filter]) % 1e12
+    tdc_rwm_flat = ak.flatten(tdc_rwm[filter]) % 1e12
+
+    # Calculate delta_t
+    delta_t = tdc_etrig_flat - tdc_rwm_flat
+
+
+    # Calculate relative timestamps
+    relative_ts0 = sp_ts0 + delta_t
+    relative_ts1 = sp_ts1 + delta_t
+
+    # Flatten the arrays
+    relative_ts0 = ak.flatten(relative_ts0) / 1e3  # convert from ns to μs
+    relative_ts1 = ak.flatten(relative_ts1) / 1e3  # convert from ns to μs
+    filter_spx = ak.flatten(sp_x)
+    filter_spy = ak.flatten(sp_y)
+    filter_spz = ak.flatten(sp_z)
+    filter_wall_tag = ak.flatten(tagger_no_sp)
+
+    # Convert to numpy arrays
+    relative_ts0 = np.array(relative_ts0)
+    relative_ts1 = np.array(relative_ts1)
+    filter_spx = np.array(filter_spx)
+    filter_spy = np.array(filter_spy)
+    filter_spz = np.array(filter_spz)
+    wall_tag = np.array(filter_wall_tag)
+
+
     print("Number of spacepoints: ", len(relative_ts0))
-    print(f"Skipped {skip_counter} events due to no TDC data")
+    print(f"Skipped {len(recodata) - len(delta_t)} events due to missing TDC data")
     
     filter_spx = np.array(filter_spx)
     filter_spy = np.array(filter_spy)
