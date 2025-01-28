@@ -9,7 +9,7 @@ RUN_P2=${RUN:2:2}
 RUN_P3=${RUN:4:3}
 
 
-N_files=30 # Number of files to process, set to -1 to process all files
+N_files=1 # Number of files to process, set to -1 to process all files
 BATCH_SIZE=25 # Number of files to process in each batch
 
 # FCLS:

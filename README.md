@@ -2,6 +2,10 @@
 
 This repo documents the work done for CRT deadtime validation, and contains all the tools needed to decode, reco, and analyse daq files to check CRT deadtime during beam-on periods. 
 
+The notebook requires an installation of LArSoft (version > v09_93_01_02rc0), and care needs to be taken to match the artdaq version used to take the data with the artdaq version larsoft has installed.
+
+THIS IS NOW OUTDATED, BUT KEPT AS A REFERENCE POINT:
+
 The notebook requires an installation of LArSoft and Henry Lay's branches features/hlay_crt/offline in sbndcode, sbnobj and sbncode (detailed [here](https://sbn-docdb.fnal.gov/cgi-bin/sso/RetrieveFile?docid=36812&filename=CRT%20Offline%20Guide%20v3.pdf&version=3) and in docdb-36812).
 
 However, to use the latest daq version (v1_10_03) additional modifications need to be made. The steps are detailed below.

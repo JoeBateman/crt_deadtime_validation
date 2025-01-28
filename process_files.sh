@@ -20,9 +20,9 @@ START_STAGE="decode"
 # Can either use the persistent path, or make a copy into /exp/sbnd/data. The latter is useful if there is worry that data will be moved to tape
 
 # Using the persistent path: 
-# SOURCE_PATH="/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/commissioning/"$VERSION"/sbnd_daq_"$VERSION"/daq/00/"$RUN_P1"/"$RUN_P2"/"$RUN_P3 # Path to the raw DAQ files
+SOURCE_PATH="/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/commissioning/"$VERSION"/sbnd_daq_"$VERSION"/daq/00/"$RUN_P1"/"$RUN_P2"/"$RUN_P3 # Path to the raw DAQ files
 # Using a copy made elsewhere and stored on /exp/sbnd/data
-SOURCE_PATH="/exp/sbnd/data/users/jbateman/workdir/crt/run/temp/$RUN_P1$RUN_P2$RUN_P3/rawdaq" # Path to the raw DAQ files
+# SOURCE_PATH="/exp/sbnd/data/users/jbateman/workdir/crt/run/temp/$RUN_P1$RUN_P2$RUN_P3/rawdaq" # Path to the raw DAQ files
 
 # Paths for where to store the output files of each stage
 TEMP_PATH="/exp/sbnd/data/users/jbateman/workdir/crt/run/temp/$RUN_P1$RUN_P2$RUN_P3" # Path to temporarily store artroot files

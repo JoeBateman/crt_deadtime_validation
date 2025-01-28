@@ -8,6 +8,12 @@ FILE_LIST_PATH="/pnfs/sbnd/scratch/users/jbateman/$SBNDCODE_VERSION/$RUN_NUMBER/
 # TARGET_DIR="§$RUN_NUMBER"
 TARGET_DIR="/pnfs/sbnd/persistent/users/jbateman/crt/run/$RUN_NUMBER"
 
+# Check if the target directory exists
+if [ ! -d "$TARGET_DIR" ]; then
+  echo "Creating target directory $TARGET_DIR"
+  mkdir -p "$TARGET_DIR"
+fi
+
 echo "Movig files to $TARGET_DIR"
 
 declare -A alphabet_map

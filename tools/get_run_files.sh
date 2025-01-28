@@ -7,9 +7,12 @@ RUN_P1=${RUN:0:2}
 RUN_P2=${RUN:2:2}
 RUN_P3=${RUN:4:3}
 
-# Using the persistent path:                                                                                                                                                    
-SOURCE_PATH="/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/commissioning/"$VERSION"/sbnd_daq_"$VERSION"/daq/00/"$RUN_P1"/"$RUN_P2"/"$RUN_P3 # Path to the raw DAQ files               
+# Using the persistent path:                                                                                  
 
+# The old commissioning path                                                                
+# SOURCE_PATH="/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/commissioning/"$VERSION"/sbnd_daq_"$VERSION"/daq/00/"$RUN_P1"/"$RUN_P2"/"$RUN_P3 # Path to the raw DAQ files               
+# Current beam-on path
+SOURCE_PATH="/pnfs/sbnd/archive/sbn/sbn_nd/data/raw/bnbzerobias/v1_10_03/sbnd_daq_v1_10_03/daq/00/"$RUN_P1"/"$RUN_P2"/"$RUN_P3
 FILE_LIST=$(find "$SOURCE_PATH" -type f)
 
 LIST_PATH="/exp/sbnd/app/users/jbateman/workdir/crt/crt_deadtime_validation/output_files/"$RUN_P1$RUN_P2$RUN_P3"/"
